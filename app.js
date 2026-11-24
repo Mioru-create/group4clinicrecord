@@ -1,5 +1,5 @@
 var USERS = { head: { n: "Nurse Reyes", r: "Clinic Head", pin: "1111" }, principal: { n: "Principal Santos", r: "Principal", pin: "2222" }, teacher: { n: "Teacher Cruz", r: "Teacher", pin: "3333" }, admin: { n: "Admin Lopez", r: "Administrator", pin: "4444" }, guardian: { n: "Guardian", r: "Guardian", pin: "5555" } };
-var PROG = ["STEM", "ABM", "HUMSS", "GAS", "ICT", "BSIT", "BSCS"];
+var PROG = ["STEM", "ABM", "HUMSS", "GAS", "ICT", "BSIT", "BSCS", "Echo Cluster", "Prime Cluster", "Beth Cluster"];
 var KEY = "clinicDB_v1";
 function today() { return new Date().toISOString().slice(0, 10) }
 function daysFrom(n) { var d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10) }
@@ -7,9 +7,9 @@ function seed() {
     return {
         pins: { head: "1111", principal: "2222", teacher: "3333", admin: "4444", guardian: "5555" }, pending: 0, lastSync: null, offline: false, seq: 4,
         visits: [
-            { id: 1, date: daysFrom(-3), time: "09:15", student: "Maria Dela Cruz", sy: "2026-2027", prog: "STEM", grade: "12", sec: "A", temp: "37.8", bp: "110/70", pulse: "88", cc: "Headache", iv: "Rest, paracetamol given", ht: "Hydration and sleep", item: "Paracetamol 500mg", q: 1, hist: "Allergic to penicillin" },
-            { id: 2, date: daysFrom(-1), time: "10:40", student: "Juan Reyes", sy: "2026-2027", prog: "ICT", grade: "11", sec: "B", temp: "36.6", bp: "120/80", pulse: "76", cc: "Minor wound", iv: "Cleaned, bandaged", ht: "Wound care", item: "Bandage roll", q: 1, hist: "None" },
-            { id: 3, date: today(), time: "08:30", student: "Ana Villanueva", sy: "2026-2027", prog: "BSIT", grade: "2nd Year", sec: "C", temp: "38.2", bp: "100/65", pulse: "92", cc: "Headache", iv: "Rest, referred to guardian", ht: "Seek doctor if fever persists", item: "", q: 0, hist: "Asthma" }],
+            { id: 1, date: daysFrom(-3), time: "09:15", student: "Maria Dela Cruz", sy: "2026-2027", prog: "STEM", grade: "12", adv: "Ms. Garcia", temp: "37.8", bp: "110/70", pulse: "88", cc: "Headache", iv: "Rest, paracetamol given", ht: "Hydration and sleep", item: "Paracetamol 500mg", q: 1, hist: "Allergic to penicillin" },
+            { id: 2, date: daysFrom(-1), time: "10:40", student: "Juan Reyes", sy: "2026-2027", prog: "ICT", grade: "11", adv: "Mr. Ramos", temp: "36.6", bp: "120/80", pulse: "76", cc: "Minor wound", iv: "Cleaned, bandaged", ht: "Wound care", item: "Bandage roll", q: 1, hist: "None" },
+            { id: 3, date: today(), time: "08:30", student: "Ana Villanueva", sy: "2026-2027", prog: "BSIT", grade: "2nd Year", adv: "Ms. Dizon", temp: "38.2", bp: "100/65", pulse: "92", cc: "Headache", iv: "Rest, referred to guardian", ht: "Seek doctor if fever persists", item: "", q: 0, hist: "Asthma" }],
         inv: [
             { id: 1, name: "Paracetamol 500mg", cat: "Medicine", qty: 48, unit: "tablets", min: 20, exp: daysFrom(200) },
             { id: 2, name: "Bandage roll", cat: "Supply", qty: 9, unit: "rolls", min: 10, exp: daysFrom(400) },
@@ -22,10 +22,11 @@ var db; try { db = JSON.parse(localStorage.getItem(KEY)) } catch (e) { db = null
 if (!db || !db.visits) db = seed();
 if (!db.pins) db.pins = seed().pins;
 if (!db.scodes) db.scodes = [];
+db.visits.forEach(function (x) { if (x.adv === undefined) x.adv = "" });
 function defaultPins() { var d = seed().pins; return Object.keys(d).every(function (k) { return db.pins[k] === d[k] }) }
 function save() { if (db.offline) db.pending++; try { localStorage.setItem(KEY, JSON.stringify(db)) } catch (e) { } }
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(db)) } catch (e) { } }
-var S = { u: null, view: "", q: "", fsy: "", fpr: "", fgr: "", fsc: "", sort: "date", edit: null, msg: "" };
+var S = { u: null, view: "", q: "", fsy: "", fpr: "", fgr: "", fad: "", sort: "date", edit: null, msg: "" };
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] }) }
 function $(id) { return document.getElementById(id) }
 function v(id) { var e = $(id); return e ? e.value.trim() : "" }
@@ -98,26 +99,26 @@ function opts(arr, cur, all) { return '<option value="">' + all + "</option>" + 
 function visits() {
     var list = db.visits.filter(function (x) {
         var q = S.q.toLowerCase();
-        return (!q || (x.student + " " + x.cc).toLowerCase().indexOf(q) > -1) && (!S.fsy || x.sy === S.fsy) && (!S.fpr || x.prog === S.fpr) && (!S.fgr || x.grade === S.fgr) && (!S.fsc || x.sec === S.fsc)
+        return (!q || (x.student + " " + (x.adv || "") + " " + x.cc).toLowerCase().indexOf(q) > -1) && (!S.fsy || x.sy === S.fsy) && (!S.fpr || x.prog === S.fpr) && (!S.fgr || x.grade === S.fgr) && (!S.fad || x.adv === S.fad)
     });
     list.sort(function (a, b) { return S.sort === "name" ? a.student.localeCompare(b.student) : (b.date + b.time).localeCompare(a.date + a.time) });
     var f = S.edit;
     var form = f ? visitForm() : '<button class="p" onclick="S.edit=\'new\';render()">+ New clinic visit</button>';
     return '<h2>Clinic visits</h2><div class="card">' + form + '</div><div class="card"><div class="fg">' +
-        '<label>Search<input id="fq" value="' + esc(S.q) + '" placeholder="Name or complaint" oninput="S.q=this.value;keep(\'fq\')"></label>' +
+        '<label>Search<input id="fq" value="' + esc(S.q) + '" placeholder="Name, adviser or complaint" oninput="S.q=this.value;keep(\'fq\')"></label>' +
         '<label>School year<select onchange="S.fsy=this.value;render()">' + opts(uniq("sy"), S.fsy, "All") + "</select></label>" +
         '<label>Strand or program<select onchange="S.fpr=this.value;render()">' + opts(uniq("prog"), S.fpr, "All") + "</select></label>" +
-        '<label>Grade or year<select onchange="S.fgr=this.value;render()">' + opts(uniq("grade"), S.fgr, "All") + "</select></label>" +
-        '<label>Section<select onchange="S.fsc=this.value;render()">' + opts(uniq("sec"), S.fsc, "All") + "</select></label>" +
+        '<label>Grade & Section<select onchange="S.fgr=this.value;render()">' + opts(uniq("grade"), S.fgr, "All") + "</select></label>" +
+        '<label>Adviser<select onchange="S.fad=this.value;render()">' + opts(uniq("adv"), S.fad, "All") + "</select></label>" +
         '<label>Sort by<select onchange="S.sort=this.value;render()"><option value="date"' + (S.sort === "date" ? " selected" : "") + '>Newest first</option><option value="name"' + (S.sort === "name" ? " selected" : "") + ">Student name</option></select></label></div>" +
         '<div class="tw"><table><tr><th>Date</th><th>Student</th><th>Class</th><th>Vitals</th><th>Complaint and care</th><th></th></tr>' +
-        (list.map(function (x) { return "<tr><td>" + esc(x.date) + "<br><span class=mu>" + esc(x.time) + "</span></td><td>" + esc(x.student) + "<br><span class=mu>" + esc(x.hist || "") + "</span></td><td>" + esc(x.prog) + " · " + esc(x.grade) + "-" + esc(x.sec) + "<br><span class=mu>SY " + esc(x.sy) + "</span></td><td>" + esc(x.temp) + " °C<br>" + esc(x.bp) + "<br>" + esc(x.pulse) + " bpm</td><td><b>" + esc(x.cc) + "</b><br>" + esc(x.iv) + "<br><span class=mu>Teaching: " + esc(x.ht) + (x.item ? "<br>Used: " + esc(x.item) + " × " + x.q : "") + '</span></td><td><button class="s" onclick="mkCode(' + x.id + ')">One-time code</button> <button class="s d" onclick="delVisit(' + x.id + ')">Delete</button></td></tr>' }).join("") || '<tr><td colspan="6" class="mu">No matching records.</td></tr>') + "</table></div></div>"
+        (list.map(function (x) { return "<tr><td>" + esc(x.date) + "<br><span class=mu>" + esc(x.time) + "</span></td><td>" + esc(x.student) + "<br><span class=mu>" + esc(x.hist || "") + "</span></td><td>" + esc(x.prog) + " · " + esc(x.grade) + "<br><span class=mu>Adviser: " + esc(x.adv || "none") + " · SY " + esc(x.sy) + "</span></td><td>" + esc(x.temp) + " °C<br>" + esc(x.bp) + "<br>" + esc(x.pulse) + " bpm</td><td><b>" + esc(x.cc) + "</b><br>" + esc(x.iv) + "<br><span class=mu>Teaching: " + esc(x.ht) + (x.item ? "<br>Used: " + esc(x.item) + " × " + x.q : "") + '</span></td><td><button class="s" onclick="mkCode(' + x.id + ')">One-time code</button> <button class="s d" onclick="delVisit(' + x.id + ')">Delete</button></td></tr>' }).join("") || '<tr><td colspan="6" class="mu">No matching records.</td></tr>') + "</table></div></div>"
 }
 function keep(id) { render(); var e = $(id); if (e) { e.focus(); var n = e.value.length; e.setSelectionRange(n, n) } }
 function visitForm() {
     var items = db.inv.map(function (i) { return "<option value='" + i.id + "'>" + esc(i.name) + " (" + i.qty + " left)</option>" }).join("");
     return '<h3>New clinic visit</h3><div class="fg"><label>Student name<input id="f_s"></label><label>School year<input id="f_sy" value="2026-2027"></label>' +
-        '<label>Strand or program<select id="f_p">' + PROG.map(function (p) { return "<option>" + p + "</option>" }).join("") + '</select></label><label>Grade or year level<input id="f_g" placeholder="e.g. 11 or 2nd Year"></label><label>Section<input id="f_c"></label>' +
+        '<label>Strand or program<select id="f_p">' + PROG.map(function (p) { return "<option>" + p + "</option>" }).join("") + '</select></label><label>Grade & Section<input id="f_g" placeholder=""></label><label>Adviser<input id="f_c" placeholder="e.g. Ms. Garcia"></label>' +
         '<label>Temperature (°C)<input id="f_t" type="number" step="0.1"></label><label>Blood pressure<input id="f_b" placeholder="120/80"></label><label>Pulse (bpm)<input id="f_pu" type="number"></label>' +
         '<label>Known conditions or allergies<input id="f_h"></label><label>Chief complaint<input id="f_cc"></label><label>Intervention<input id="f_iv"></label><label>Health teaching<input id="f_ht"></label>' +
         '<label>Supply used (optional)<select id="f_i"><option value="">None</option>' + items + '</select></label><label>Quantity used<input id="f_q" type="number" min="1" value="1"></label></div>' +
@@ -125,11 +126,11 @@ function visitForm() {
 }
 function addVisit() {
     var s = v("f_s"), cc = v("f_cc"), g = v("f_g"), c = v("f_c");
-    if (!s || !cc || !g || !c) { alert("Please fill in the student name, grade or year, section, and chief complaint."); return }
+    if (!s || !cc || !g || !c) { alert("Please fill in the student name, grade & section, adviser, and chief complaint."); return }
     var iid = +v("f_i"), q = Math.max(1, +v("f_q") || 1), nm = "", it = db.inv.filter(function (i) { return i.id === iid })[0];
     if (it) { if (it.qty < q) { alert("Not enough stock: only " + it.qty + " " + it.unit + " of " + it.name + " left."); return } it.qty -= q; nm = it.name }
     var d = new Date();
-    db.visits.push({ id: db.seq++, date: today(), time: ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2), student: s, sy: v("f_sy"), prog: v("f_p"), grade: g, sec: c, temp: v("f_t"), bp: v("f_b"), pulse: v("f_pu"), cc: cc, iv: v("f_iv"), ht: v("f_ht"), item: nm, q: nm ? q : 0, hist: v("f_h") });
+    db.visits.push({ id: db.seq++, date: today(), time: ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2), student: s, sy: v("f_sy"), prog: v("f_p"), grade: g, adv: c, temp: v("f_t"), bp: v("f_b"), pulse: v("f_pu"), cc: cc, iv: v("f_iv"), ht: v("f_ht"), item: nm, q: nm ? q : 0, hist: v("f_h") });
     save(); S.edit = null; S.msg = "Visit saved."; render()
 }
 function delVisit(id) { if (confirm("Delete this visit record?")) { db.visits = db.visits.filter(function (x) { return x.id !== id }); db.codes = db.codes.filter(function (c) { return c.vid !== id }); save(); render() } }
@@ -179,9 +180,9 @@ function access() {
 }
 
 function ver() {
-    var q = S.q.toLowerCase(), list = db.visits.filter(function (x) { return !q || x.student.toLowerCase().indexOf(q) > -1 }).sort(function (a, b) { return (b.date + b.time).localeCompare(a.date + a.time) });
-    return '<h2>Clinic visit verification</h2><p class="note">You can confirm that a student visited the clinic. Medical details are hidden for your role.</p><div class="card"><label>Search student<input id="fq" value="' + esc(S.q) + '" oninput="S.q=this.value;keep(\'fq\')"></label><br><div class="tw"><table><tr><th>Student</th><th>Class</th><th>Date</th><th>Time</th><th>Status</th></tr>' +
-        (list.map(function (x) { return "<tr><td>" + esc(x.student) + "</td><td>" + esc(x.prog) + " · " + esc(x.grade) + "-" + esc(x.sec) + "</td><td>" + esc(x.date) + "</td><td>" + esc(x.time) + '</td><td><span class="tag good">Verified clinic visit</span></td></tr>' }).join("") || '<tr><td colspan="5" class="mu">No records.</td></tr>') + "</table></div></div>"
+    var q = S.q.toLowerCase(), list = db.visits.filter(function (x) { return !q || (x.student + " " + (x.adv || "")).toLowerCase().indexOf(q) > -1 }).sort(function (a, b) { return (b.date + b.time).localeCompare(a.date + a.time) });
+    return '<h2>Clinic visit verification</h2><p class="note">You can confirm that a student visited the clinic. Medical details are hidden for your role.</p><div class="card"><label>Search student or adviser<input id="fq" value="' + esc(S.q) + '" oninput="S.q=this.value;keep(\'fq\')"></label><br><div class="tw"><table><tr><th>Student</th><th>Class</th><th>Adviser</th><th>Date</th><th>Time</th><th>Status</th></tr>' +
+        (list.map(function (x) { return "<tr><td>" + esc(x.student) + "</td><td>" + esc(x.prog) + " · " + esc(x.grade) + "</td><td>" + esc(x.adv || "") + "</td><td>" + esc(x.date) + "</td><td>" + esc(x.time) + '</td><td><span class="tag good">Verified clinic visit</span></td></tr>' }).join("") || '<tr><td colspan="6" class="mu">No records.</td></tr>') + "</table></div></div>"
 }
 
 function gd() { var out = S.gres || ""; return '<h2>Guardian access</h2><div class="card"><p class="note">Enter the one-time code from the clinic. It can be used once.</p><div class="bar"><input id="gc" inputmode="numeric" placeholder="6-digit code"><button class="p" onclick="useCode()">View record</button></div></div>' + out }
